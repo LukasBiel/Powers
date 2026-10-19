@@ -129,6 +129,13 @@ select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
 </div>
 
 <script>
+// show any script error on the page (helps debugging on iPad)
+window.addEventListener('error', function (e) {
+  var d = document.createElement('pre');
+  d.style.cssText = 'white-space:pre-wrap;color:#b00;background:#fee;padding:8px;font-size:12px';
+  d.textContent = 'Error: ' + e.message + ' (line ' + e.lineno + ')';
+  document.body.insertBefore(d, document.body.firstChild);
+});
 const T = {
   pl: {
     title: 'Potęgi 2048', base: 'Podstawa', size: 'Plansza', mode: 'Wyświetlanie',
@@ -292,8 +299,10 @@ function eqHTML(e) {
 }
 function render(merged = new Set(), fresh = new Set()) {
   board.style.setProperty('--n', n);
+  board.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+  board.style.gridTemplateRows = 'repeat(' + n + ', 1fr)';
   board.innerHTML = '';
-  const w = board.getBoundingClientRect().width;
+  const w = board.getBoundingClientRect().width || Math.min(508, window.innerWidth - 32);
   board.style.height = w + 'px';
   const cell = (w - 16 - 8 * (n - 1)) / n;
   grid.forEach((e, i) => {
