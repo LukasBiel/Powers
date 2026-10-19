@@ -69,12 +69,37 @@ select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
 .pad .up{grid-column:2;grid-row:1}.pad .left{grid-column:1;grid-row:2}
 .pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
 .hint{color:var(--muted);font-size:.8rem;text-align:center}
+
+.timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted);font-size:1rem;margin-left:auto;margin-right:10px}
+.quiz{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(20,18,28,.78);display:none;
+  align-items:center;justify-content:center;padding:16px;z-index:10}
+.quiz.show{display:flex}
+.qcard{background:var(--panel);color:var(--ink);border-radius:16px;padding:20px;width:100%;max-width:460px;
+  box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.qhead{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;margin-bottom:10px}
+.dots{display:flex;gap:6px}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--cell);border:2px solid var(--board);transition:background .2s}
+.dot.on{background:var(--accent);border-color:var(--accent)}
+.qhead .lang{margin-left:auto}
+.qintro{color:var(--muted);font-size:.95rem;margin:0 0 14px}
+.qtext{font-size:1rem;color:var(--muted)}
+.qexpr{font-size:2.2rem;font-weight:800;margin:6px 0 18px;text-align:center}
+.qexpr sup,.opt sup,.qfeed sup{font-size:.6em}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{font:inherit;font-size:1.6rem;font-weight:700;padding:14px 8px;border-radius:12px;border:2px solid var(--board);
+  background:var(--bg);color:var(--ink);cursor:pointer;touch-action:manipulation;-webkit-appearance:none}
+.opt.right{background:#2e9e5b;border-color:#2e9e5b;color:#fff}
+.opt.wrong{background:#d64545;border-color:#d64545;color:#fff}
+.qfeed{min-height:1.4em;margin-top:14px;font-size:1rem;font-weight:600}
+.qfeed .rule{display:block;font-weight:400;color:var(--muted);margin-top:6px;font-size:1.05rem}
+.qnext{width:100%;margin-top:14px;display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1 id="title">Powers 2048</h1>
+    <span class="timer" id="timer"></span>
     <button class="lang" id="langBtn">PL</button>
   </header>
   <p class="rule" id="rule"></p>
@@ -128,6 +153,22 @@ select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
   <p class="hint" id="hint"></p>
 </div>
 
+<div class="quiz" id="quiz">
+  <div class="qcard">
+    <div class="qhead">
+      <span id="qStreakLbl"></span>
+      <div class="dots" id="dots"></div>
+      <button class="lang" id="qLang"></button>
+    </div>
+    <p class="qintro" id="qIntro"></p>
+    <div class="qtext" id="qText"></div>
+    <div class="qexpr" id="qExpr"></div>
+    <div class="opts" id="opts"></div>
+    <div class="qfeed" id="qFeed"></div>
+    <button class="btn qnext" id="qNext"></button>
+  </div>
+</div>
+
 <script>
 // show any script error on the page (helps debugging on iPad)
 window.addEventListener('error', function (e) {
@@ -145,7 +186,14 @@ const T = {
     over: 'Koniec gry!', lastEq: 'Ostatnie połączenie',
     placeholder: 'Połącz kafelki – tutaj pojawi się działanie.',
     rule: b => `Zasada: ${b} jednakowe kafelki w linii łączą się w jeden, którego wykładnik jest większy o 1.`,
-    hint: 'Strzałki / WASD, przesunięcie palcem lub przyciski powyżej.'
+    hint: 'Strzałki / WASD, przesunięcie palcem lub przyciski powyżej.',
+    qIntro: (k, m) => `Odpowiedz poprawnie ${k} razy z rzędu, aby odblokować ${m} min gry.`,
+    timeUp: 'Koniec czasu! Odpowiedz na pytania, aby grać dalej.',
+    inARow: 'Z rzędu:', qValue: 'Która potęga jest równa tej liczbie?',
+    qLaw: 'Wybierz wyrażenie równe temu:', correct: 'Dobrze!', unlocked: 'Odblokowane! 🎉',
+    wrongAns: 'Niestety. Poprawna odpowiedź:', next: 'Dalej', play: 'Graj ▶',
+    ruleVal: 'Policz czynniki', ruleSame: 'Ta sama podstawa, mnożenie → dodaj wykładniki',
+    ruleExp: 'Ten sam wykładnik, mnożenie → pomnóż podstawy', rulePow: 'Potęga potęgi → pomnóż wykładniki'
   },
   en: {
     title: 'Powers 2048', base: 'Base', size: 'Board', mode: 'Display',
@@ -155,7 +203,14 @@ const T = {
     over: 'Game over!', lastEq: 'Last merge',
     placeholder: 'Merge some tiles – the calculation will appear here.',
     rule: b => `Rule: ${b} identical tiles in a line merge into one tile whose exponent is 1 higher.`,
-    hint: 'Arrow keys / WASD, swipe, or the buttons above.'
+    hint: 'Arrow keys / WASD, swipe, or the buttons above.',
+    qIntro: (k, m) => `Answer ${k} questions in a row correctly to unlock ${m} min of play.`,
+    timeUp: "Time's up! Answer the questions to keep playing.",
+    inARow: 'In a row:', qValue: 'Which power equals this number?',
+    qLaw: 'Choose the expression equal to:', correct: 'Correct!', unlocked: 'Unlocked! 🎉',
+    wrongAns: 'Not quite. Correct answer:', next: 'Next', play: 'Play ▶',
+    ruleVal: 'Count the factors', ruleSame: 'Same base, multiplying → add the exponents',
+    ruleExp: 'Same exponent, multiplying → multiply the bases', rulePow: 'Power of a power → multiply the exponents'
   }
 };
 const DEFAULT_SIZE = {2: 5, 3: 6, 4: 7, 5: 7};
@@ -247,7 +302,7 @@ function canMove() {
   return false;
 }
 function move(dir) {
-  if (over) return;
+  if (over || locked) return;
   const ng = grid.slice();
   const mergedCells = new Set();
   let gained = 0, top = null;
@@ -348,6 +403,7 @@ function applyLang() {
   $('undoBtn').textContent = t.undo; $('newBtn').textContent = t.newGame;
   $('againBtn').textContent = t.again; $('overText').textContent = t.over;
   $('lEq').textContent = t.lastEq; $('hint').textContent = t.hint;
+  if (typeof renderQuizText === 'function') { renderQuizText(); updateTimer(); }
 }
 function syncSelects() {
   $('selBase').value = base; $('selSize').value = n; $('selMode').value = mode;
@@ -397,8 +453,146 @@ $('againBtn').addEventListener('click', newGame);
 $('undoBtn').addEventListener('click', undo);
 window.addEventListener('resize', () => render());
 
+/* ---------- quiz gate ---------- */
+const PLAY_SECONDS = 180;  // play time after each unlock (seconds)
+const NEED = 3;            // correct answers in a row needed to unlock
+let locked = true, playLeft = PLAY_SECONDS, streak = 0, curQ = null, answered = false;
+let firstQuiz = true, lastExpr = '';
+
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const x = arr[i]; arr[i] = arr[j]; arr[j] = x; } return arr; };
+const P = (b, e) => `${b}<sup>${e}</sup>`;
+
+// 1) number -> which power?
+function qValue() {
+  const pairs = [];
+  for (let b = 2; b <= 10; b++) for (let e = 2; e <= 10; e++) {
+    const v = Math.pow(b, e);
+    if (v <= 1000 || (b === 10 && e <= 6)) pairs.push([b, e]);
+  }
+  const [b, e] = pick(pairs);
+  const v = Math.pow(b, e);
+  const cands = [];
+  // typical mistake: thinking "base × exponent = number" (27 -> 9^3, 3^9)
+  for (let x = 2; x <= Math.min(v / 2, 50); x++) if (v % x === 0) { const y = v / x; if (y >= 2 && y <= 12) cands.push([x, y]); }
+  cands.push([b, e + 1], [b, e - 1], [e, b]);
+  const seen = new Set([b + '^' + e]), wrong = [];
+  shuffle(cands).forEach(([x, y]) => {
+    const k = x + '^' + y;
+    if (wrong.length >= 3 || seen.has(k) || Math.pow(x, y) === v) return;
+    seen.add(k); wrong.push(P(x, y));
+  });
+  for (let k = 2; wrong.length < 3; k++) wrong.push(P(b, e + k));
+  return {kind: 'qValue', expr: fmt(v), right: P(b, e), wrong,
+    rule: 'ruleVal', ruleExpr: `${fmt(v)} = ${Array(e).fill(b).join(' · ')} = ${P(b, e)}`};
+}
+// 2) a^m · a^n
+function qSameBase() {
+  const a = rnd(2, 7), m = rnd(2, 6); let n = rnd(2, 6);
+  if (m === 2 && n === 2) n = 3;
+  return {kind: 'qLaw', expr: `${P(a, m)} · ${P(a, n)}`, right: P(a, m + n),
+    wrong: [P(a, m * n), P(a * a, m + n), P(a * a, m * n)],
+    rule: 'ruleSame', ruleExpr: `${P(a, m)} · ${P(a, n)} = ${P(a, m + '+' + n)} = ${P(a, m + n)}`};
+}
+// 3) a^n · b^n
+function qSameExp() {
+  const a = rnd(2, 5); let b = rnd(2, 5); if (a === b) b = a === 5 ? 2 : a + 1;
+  const n = rnd(2, 6);
+  return {kind: 'qLaw', expr: `${P(a, n)} · ${P(b, n)}`, right: P(a * b, n),
+    wrong: [P(a * b, 2 * n), P(a + b, n), P(a + b, 2 * n)],
+    rule: 'ruleExp', ruleExpr: `${P(a, n)} · ${P(b, n)} = (${a} · ${b})<sup>${n}</sup> = ${P(a * b, n)}`};
+}
+// 4) (a^m)^n
+function qPowPow() {
+  const a = rnd(2, 6), n = rnd(2, 4); let m = rnd(2, 5);
+  if (m === 2 && n === 2) m = 3;
+  return {kind: 'qLaw', expr: `(${P(a, m)})<sup>${n}</sup>`, right: P(a, m * n),
+    // (2^m)^2 really equals 4^m, so use a different trap there
+    wrong: [P(a, m + n), P(a, Math.pow(m, n)), (a === 2 && n === 2) ? P(a * m, n) : P(a * n, m)],
+    rule: 'rulePow', ruleExpr: `(${P(a, m)})<sup>${n}</sup> = ${P(a, m + '·' + n)} = ${P(a, m * n)}`};
+}
+// half "number -> power", half the three laws
+const GEN = [qValue, qValue, qValue, qSameBase, qSameExp, qPowPow];
+
+function renderDots() {
+  $('dots').innerHTML = '';
+  for (let i = 0; i < NEED; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < streak ? ' on' : '');
+    $('dots').appendChild(d);
+  }
+}
+function renderQuizText() {
+  const t = T[lang];
+  $('qLang').textContent = lang === 'pl' ? 'EN' : 'PL';
+  $('qStreakLbl').textContent = t.inARow;
+  $('qIntro').textContent = firstQuiz ? t.qIntro(NEED, Math.round(PLAY_SECONDS / 60)) : t.timeUp;
+  if (curQ) $('qText').textContent = t[curQ.kind];
+  const fb = $('qFeed').dataset;
+  if (fb.state === 'right') $('qFeed').textContent = streak >= NEED ? t.unlocked : t.correct;
+  if (fb.state === 'wrong') $('qFeed').innerHTML = `${t.wrongAns} ${curQ.right}<span class="rule">${t[curQ.rule]}:<br>${curQ.ruleExpr}</span>`;
+  $('qNext').textContent = streak >= NEED ? t.play : t.next;
+}
+function openQuiz() {
+  locked = true; streak = 0;
+  renderDots(); nextQ(); updateTimer();
+  $('quiz').classList.add('show');
+}
+function nextQ() {
+  answered = false;
+  let q;
+  do { q = pick(GEN)(); } while (q.expr === lastExpr);
+  lastExpr = q.expr; curQ = q;
+  $('qExpr').innerHTML = q.expr;
+  $('opts').innerHTML = '';
+  shuffle([q.right].concat(q.wrong)).forEach(o => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.innerHTML = o;
+    b.addEventListener('click', () => answer(b, o));
+    $('opts').appendChild(b);
+  });
+  $('qFeed').textContent = ''; $('qFeed').dataset.state = '';
+  $('qNext').style.display = 'none';
+  renderQuizText();
+}
+function answer(btn, o) {
+  if (answered) return;
+  answered = true;
+  const ok = o === curQ.right;
+  $('opts').querySelectorAll('.opt').forEach(b => { if (b.innerHTML === curQ.right) b.classList.add('right'); });
+  if (ok) {
+    streak++;
+    $('qFeed').dataset.state = 'right';
+    if (streak < NEED) setTimeout(nextQ, 700);
+    else $('qNext').style.display = 'block';
+  } else {
+    streak = 0;
+    btn.classList.add('wrong');
+    $('qFeed').dataset.state = 'wrong';
+    $('qNext').style.display = 'block';
+  }
+  renderDots(); renderQuizText();
+}
+function closeQuiz() {
+  firstQuiz = false; locked = false; playLeft = PLAY_SECONDS;
+  $('quiz').classList.remove('show');
+  updateTimer();
+}
+function updateTimer() {
+  const m = Math.floor(playLeft / 60), s = playLeft % 60;
+  $('timer').textContent = locked ? '🔒' : `⏱ ${m}:${String(s).padStart(2, '0')}`;
+}
+$('qNext').addEventListener('click', () => { if (streak >= NEED) closeQuiz(); else nextQ(); });
+$('qLang').addEventListener('click', () => $('langBtn').click());
+setInterval(() => {
+  if (locked || document.hidden) return;
+  playLeft--; updateTimer();
+  if (playLeft <= 0) openQuiz();
+}, 1000);
+
 /* ---------- start ---------- */
-readParams(); syncSelects(); applyLang(); newGame();
+readParams(); syncSelects(); applyLang(); newGame(); openQuiz();
 </script>
 </body>
 </html>
