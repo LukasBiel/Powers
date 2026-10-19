@@ -35,9 +35,10 @@ select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
 .board-wrap{position:relative}
 .board{--n:4;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px;
   background:var(--board);padding:8px;border-radius:12px;width:100%;
-  aspect-ratio:1;touch-action:none;user-select:none}
-.cell{background:var(--cell);border-radius:8px;position:relative;aspect-ratio:1}
-.tile{position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;
+  grid-template-rows:repeat(var(--n),1fr);
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.cell{background:var(--cell);border-radius:8px;position:relative;min-width:0;min-height:0}
+.tile{position:absolute;top:0;left:0;right:0;bottom:0;border-radius:8px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;font-weight:800;line-height:1}
 .tile sup{font-size:.55em;margin-left:.04em}
 .tile .val{font-weight:600;opacity:.85;margin-top:.25em}
@@ -45,11 +46,11 @@ select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
 .tile.merged{animation:pop .22s ease-out}
 @keyframes appear{from{transform:scale(0)}to{transform:scale(1)}}
 @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
-.overlay{position:absolute;inset:0;border-radius:12px;background:rgba(20,18,28,.7);
+.overlay{position:absolute;top:0;left:0;right:0;bottom:0;border-radius:12px;background:rgba(20,18,28,.7);
   color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;
   font-size:1.5rem;font-weight:800;text-align:center;padding:16px}
 .overlay.show{display:flex}
-.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 16px;
+.btn{touch-action:manipulation;-webkit-appearance:none;font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 16px;
   background:var(--accent);color:var(--accent-ink);cursor:pointer}
 .btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--board)}
 .btn:disabled{opacity:.4;cursor:default}
@@ -63,7 +64,7 @@ select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
 .eq b{color:var(--accent)}
 .pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,48px);
   gap:6px;justify-content:center;margin:14px 0 4px}
-.pad button{font-size:1.3rem;border-radius:10px;border:1px solid var(--board);
+.pad button{font-size:1.3rem;touch-action:manipulation;border-radius:10px;border:1px solid var(--board);
   background:var(--panel);color:var(--ink);cursor:pointer}
 .pad .up{grid-column:2;grid-row:1}.pad .left{grid-column:1;grid-row:2}
 .pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
@@ -292,7 +293,9 @@ function eqHTML(e) {
 function render(merged = new Set(), fresh = new Set()) {
   board.style.setProperty('--n', n);
   board.innerHTML = '';
-  const cell = (board.clientWidth - 16 - 8 * (n - 1)) / n;
+  const w = board.getBoundingClientRect().width;
+  board.style.height = w + 'px';
+  const cell = (w - 16 - 8 * (n - 1)) / n;
   grid.forEach((e, i) => {
     const c = document.createElement('div');
     c.className = 'cell';
@@ -350,14 +353,27 @@ document.addEventListener('keydown', e => {
   if (dir) { e.preventDefault(); move(dir); }
 });
 let start = null;
-board.addEventListener('pointerdown', e => { start = {x: e.clientX, y: e.clientY}; });
-board.addEventListener('pointerup', e => {
+function swipeEnd(x, y) {
   if (!start) return;
-  const dx = e.clientX - start.x, dy = e.clientY - start.y;
+  const dx = x - start.x, dy = y - start.y;
   start = null;
   if (Math.max(Math.abs(dx), Math.abs(dy)) < 25) return;
   move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
-});
+}
+if ('ontouchstart' in window) {
+  // iOS Safari: plain touch events are the most reliable
+  board.addEventListener('touchstart', e => {
+    const t = e.touches[0]; start = {x: t.clientX, y: t.clientY};
+  }, {passive: true});
+  board.addEventListener('touchmove', e => { e.preventDefault(); }, {passive: false});
+  board.addEventListener('touchend', e => {
+    const t = e.changedTouches[0]; swipeEnd(t.clientX, t.clientY);
+  });
+  board.addEventListener('touchcancel', () => { start = null; });
+} else {
+  board.addEventListener('mousedown', e => { start = {x: e.clientX, y: e.clientY}; });
+  window.addEventListener('mouseup', e => swipeEnd(e.clientX, e.clientY));
+}
 document.querySelectorAll('.pad button').forEach(b => b.addEventListener('click', () => move(b.dataset.dir)));
 
 $('selBase').addEventListener('change', e => {
