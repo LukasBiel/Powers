@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Powers 2048</title>
+<style>
+:root{
+  --bg:#faf8f3;--panel:#ffffff;--ink:#2b2a33;--muted:#6b6878;
+  --board:#cfc7b8;--cell:#e6e0d4;--accent:#5b4bd6;--accent-ink:#fff;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#17161c;--panel:#221f2b;--ink:#ece9f5;--muted:#a19cb3;
+  --board:#2f2b3a;--cell:#3b3649;--accent:#9d90ff;--accent-ink:#17161c;}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+.wrap{max-width:540px;margin:0 auto;padding:16px;}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+h1{font-size:1.6rem;margin:0;letter-spacing:-.02em}
+h1 sup{font-size:.6em;color:var(--accent)}
+.lang{background:none;border:1px solid var(--muted);color:var(--ink);
+  border-radius:8px;padding:4px 10px;cursor:pointer;font-weight:600}
+.rule{color:var(--muted);margin:6px 0 12px;font-size:.95rem}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.controls label{display:flex;flex-direction:column;font-size:.75rem;color:var(--muted);gap:4px}
+select{font:inherit;font-size:.95rem;padding:6px;border-radius:8px;
+  border:1px solid var(--board);background:var(--panel);color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--panel);border-radius:10px;padding:8px;text-align:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stat small{display:block;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.stat b{font-size:1.15rem}
+.board-wrap{position:relative}
+.board{--n:4;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px;
+  background:var(--board);padding:8px;border-radius:12px;width:100%;
+  aspect-ratio:1;touch-action:none;user-select:none}
+.cell{background:var(--cell);border-radius:8px;position:relative;aspect-ratio:1}
+.tile{position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-weight:800;line-height:1}
+.tile sup{font-size:.55em;margin-left:.04em}
+.tile .val{font-weight:600;opacity:.85;margin-top:.25em}
+.tile.new{animation:appear .18s ease-out}
+.tile.merged{animation:pop .22s ease-out}
+@keyframes appear{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+.overlay{position:absolute;inset:0;border-radius:12px;background:rgba(20,18,28,.7);
+  color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  font-size:1.5rem;font-weight:800;text-align:center;padding:16px}
+.overlay.show{display:flex}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 16px;
+  background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--board)}
+.btn:disabled{opacity:.4;cursor:default}
+.actions{display:flex;gap:8px;margin:12px 0}
+.actions .btn{flex:1}
+.eqbox{background:var(--panel);border-radius:12px;padding:12px 14px;min-height:96px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.eqbox h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 6px}
+.eq{font-size:1.25rem;font-weight:700;overflow-wrap:anywhere}
+.eq2,.eq3{color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+.eq b{color:var(--accent)}
+.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,48px);
+  gap:6px;justify-content:center;margin:14px 0 4px}
+.pad button{font-size:1.3rem;border-radius:10px;border:1px solid var(--board);
+  background:var(--panel);color:var(--ink);cursor:pointer}
+.pad .up{grid-column:2;grid-row:1}.pad .left{grid-column:1;grid-row:2}
+.pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
+.hint{color:var(--muted);font-size:.8rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">Powers 2048</h1>
+    <button class="lang" id="langBtn">PL</button>
+  </header>
+  <p class="rule" id="rule"></p>
+
+  <div class="controls">
+    <label><span id="lBase"></span>
+      <select id="selBase">
+        <option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option>
+      </select></label>
+    <label><span id="lSize"></span>
+      <select id="selSize">
+        <option value="4">4 × 4</option><option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option>
+      </select></label>
+    <label><span id="lMode"></span>
+      <select id="selMode">
+        <option value="pow"></option><option value="val"></option><option value="both"></option>
+      </select></label>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><small id="lScore"></small><b id="score">0</b></div>
+    <div class="stat"><small id="lMax"></small><b id="maxTile">–</b></div>
+    <div class="stat"><small id="lBest"></small><b id="best">–</b></div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="overlay">
+      <div id="overText"></div>
+      <button class="btn" id="againBtn"></button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn ghost" id="undoBtn"></button>
+    <button class="btn" id="newBtn"></button>
+  </div>
+
+  <div class="eqbox">
+    <h2 id="lEq"></h2>
+    <div id="eq"></div>
+  </div>
+
+  <div class="pad">
+    <button class="up" data-dir="up" aria-label="up">▲</button>
+    <button class="left" data-dir="left" aria-label="left">◀</button>
+    <button class="down" data-dir="down" aria-label="down">▼</button>
+    <button class="right" data-dir="right" aria-label="right">▶</button>
+  </div>
+  <p class="hint" id="hint"></p>
+</div>
+
+<script>
+const T = {
+  pl: {
+    title: 'Potęgi 2048', base: 'Podstawa', size: 'Plansza', mode: 'Wyświetlanie',
+    pow: 'potęga', val: 'wartość', both: 'oba',
+    score: 'Wynik', max: 'Najwyższy', best: 'Rekord',
+    undo: '↶ Cofnij', newGame: 'Nowa gra', again: 'Zagraj jeszcze raz',
+    over: 'Koniec gry!', lastEq: 'Ostatnie połączenie',
+    placeholder: 'Połącz kafelki – tutaj pojawi się działanie.',
+    rule: b => `Zasada: ${b} jednakowe kafelki w linii łączą się w jeden, którego wykładnik jest większy o 1.`,
+    hint: 'Strzałki / WASD, przesunięcie palcem lub przyciski powyżej.'
+  },
+  en: {
+    title: 'Powers 2048', base: 'Base', size: 'Board', mode: 'Display',
+    pow: 'power', val: 'value', both: 'both',
+    score: 'Score', max: 'Highest', best: 'Best',
+    undo: '↶ Undo', newGame: 'New game', again: 'Play again',
+    over: 'Game over!', lastEq: 'Last merge',
+    placeholder: 'Merge some tiles – the calculation will appear here.',
+    rule: b => `Rule: ${b} identical tiles in a line merge into one tile whose exponent is 1 higher.`,
+    hint: 'Arrow keys / WASD, swipe, or the buttons above.'
+  }
+};
+const DEFAULT_SIZE = {2: 5, 3: 6, 4: 7, 5: 7};
+
+let base = 3, n = 6, mode = 'both', lang = 'en';
+let grid = [], score = 0, over = false, lastEq = null, undoState = null;
+
+const $ = id => document.getElementById(id);
+const board = $('board');
+
+/* ---------- URL & storage ---------- */
+function readParams() {
+  const p = new URLSearchParams(location.search);
+  const b = parseInt(p.get('base'), 10);
+  if ([2, 3, 4, 5].includes(b)) base = b;
+  const s = parseInt(p.get('size'), 10);
+  n = [4, 5, 6, 7].includes(s) ? s : DEFAULT_SIZE[base];
+  if (['pow', 'val', 'both'].includes(p.get('mode'))) mode = p.get('mode');
+  if (['pl', 'en'].includes(p.get('lang'))) lang = p.get('lang');
+}
+function writeParams() {
+  const p = new URLSearchParams({base, size: n, mode, lang});
+  try { history.replaceState(null, '', '?' + p.toString()); } catch (e) {}
+}
+const bestKey = () => `pot2048-best-${base}-${n}`;
+function loadBest() {
+  try { return JSON.parse(localStorage.getItem(bestKey())) || {score: 0, exp: 0}; }
+  catch (e) { return {score: 0, exp: 0}; }
+}
+function saveBest(b) {
+  try { localStorage.setItem(bestKey(), JSON.stringify(b)); } catch (e) {}
+}
+
+/* ---------- helpers ---------- */
+const pw = (b, e) => `${b}<sup>${e}</sup>`;
+const fmt = v => v.toLocaleString(lang === 'pl' ? 'pl-PL' : 'en-GB');
+const valOf = e => Math.pow(base, e);
+
+/* ---------- game logic ---------- */
+function newGame() {
+  grid = Array(n * n).fill(0);
+  score = 0; over = false; lastEq = null; undoState = null;
+  const a = spawn(), b = spawn();
+  render(new Set(), new Set([a, b]));
+}
+function spawn() {
+  const empty = [];
+  grid.forEach((v, i) => { if (!v) empty.push(i); });
+  if (!empty.length) return -1;
+  const i = empty[Math.floor(Math.random() * empty.length)];
+  grid[i] = Math.random() < 0.9 ? 1 : 2;
+  return i;
+}
+// indices of line k, ordered from the side tiles move towards
+function lineIdx(dir, k) {
+  const idx = [];
+  for (let j = 0; j < n; j++) {
+    if (dir === 'left') idx.push(k * n + j);
+    else if (dir === 'right') idx.push(k * n + (n - 1 - j));
+    else if (dir === 'up') idx.push(j * n + k);
+    else idx.push((n - 1 - j) * n + k);
+  }
+  return idx;
+}
+function slide(line) {
+  const t = line.filter(v => v);
+  const out = [], merges = [];
+  let i = 0, gained = 0;
+  while (i < t.length) {
+    let ok = i + base <= t.length;
+    if (ok) for (let m = 1; m < base; m++) if (t[i + m] !== t[i]) { ok = false; break; }
+    if (ok) {
+      out.push(t[i] + 1);
+      merges.push({e: t[i], pos: out.length - 1});
+      gained += valOf(t[i] + 1);
+      i += base;
+    } else { out.push(t[i]); i++; }
+  }
+  while (out.length < n) out.push(0);
+  return {out, merges, gained};
+}
+function canMove() {
+  if (grid.includes(0)) return true;
+  for (const d of ['left', 'up']) {
+    for (let k = 0; k < n; k++) {
+      if (slide(lineIdx(d, k).map(i => grid[i])).merges.length) return true;
+    }
+  }
+  return false;
+}
+function move(dir) {
+  if (over) return;
+  const ng = grid.slice();
+  const mergedCells = new Set();
+  let gained = 0, top = null;
+  for (let k = 0; k < n; k++) {
+    const idx = lineIdx(dir, k);
+    const r = slide(idx.map(i => grid[i]));
+    idx.forEach((i, j) => { ng[i] = r.out[j]; });
+    r.merges.forEach(m => {
+      mergedCells.add(idx[m.pos]);
+      if (top === null || m.e > top) top = m.e;
+    });
+    gained += r.gained;
+  }
+  if (ng.every((v, i) => v === grid[i])) return; // nothing moved
+  undoState = {grid: grid.slice(), score, lastEq};
+  grid = ng; score += gained;
+  if (top !== null) lastEq = top;
+  const s = spawn();
+  if (!canMove()) over = true;
+  render(mergedCells, new Set([s]));
+}
+function undo() {
+  if (!undoState) return;
+  grid = undoState.grid; score = undoState.score; lastEq = undoState.lastEq;
+  undoState = null; over = false;
+  render();
+}
+
+/* ---------- rendering ---------- */
+function tileColor(e) {
+  const hue = (35 + e * 38) % 360;
+  const light = Math.max(38, 86 - e * 6);
+  return {bg: `hsl(${hue} 70% ${light}%)`, fg: light < 62 ? '#fff' : '#2b2a33'};
+}
+function tileHTML(e, cell) {
+  const v = fmt(valOf(e));
+  const digits = String(valOf(e)).length;
+  if (mode === 'pow') return {html: pw(base, e), fs: cell * 0.38};
+  if (mode === 'val') return {html: v, fs: cell * Math.min(0.42, 1.1 / (digits + 0.6))};
+  const small = cell * Math.min(0.17, 0.95 / (digits + 1.5));
+  return {html: `<div>${pw(base, e)}</div><div class="val" style="font-size:${small}px">${v}</div>`, fs: cell * 0.3};
+}
+function eqHTML(e) {
+  const terms = Array(base).fill(pw(base, e)).join(' + ');
+  const vals = Array(base).fill(fmt(valOf(e))).join(' + ');
+  return `<div class="eq">${terms} = <b>${pw(base, e + 1)}</b></div>` +
+         `<div class="eq2">${pw(base, 1)} · ${pw(base, e)} = ${pw(base, '1+' + e)} = ${pw(base, e + 1)}</div>` +
+         `<div class="eq3">${vals} = ${fmt(valOf(e + 1))}</div>`;
+}
+function render(merged = new Set(), fresh = new Set()) {
+  board.style.setProperty('--n', n);
+  board.innerHTML = '';
+  const cell = (board.clientWidth - 16 - 8 * (n - 1)) / n;
+  grid.forEach((e, i) => {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    if (e) {
+      const t = document.createElement('div');
+      const col = tileColor(e);
+      const h = tileHTML(e, cell);
+      t.className = 'tile' + (merged.has(i) ? ' merged' : '') + (fresh.has(i) ? ' new' : '');
+      t.style.background = col.bg; t.style.color = col.fg; t.style.fontSize = h.fs + 'px';
+      t.innerHTML = h.html;
+      c.appendChild(t);
+    }
+    board.appendChild(c);
+  });
+
+  const maxE = Math.max(0, ...grid);
+  const best = loadBest();
+  if (score > best.score || maxE > best.exp) {
+    best.score = Math.max(best.score, score);
+    best.exp = Math.max(best.exp, maxE);
+    saveBest(best);
+  }
+  $('score').textContent = fmt(score);
+  $('maxTile').innerHTML = maxE ? pw(base, maxE) : '–';
+  $('best').innerHTML = best.exp ? `${pw(base, best.exp)} · ${fmt(best.score)}` : '–';
+  $('eq').innerHTML = lastEq === null ? `<div class="eq3">${T[lang].placeholder}</div>` : eqHTML(lastEq);
+  $('undoBtn').disabled = !undoState;
+  $('overlay').classList.toggle('show', over);
+}
+function applyLang() {
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  document.title = t.title;
+  $('title').innerHTML = lang === 'pl' ? 'Potęgi 2<sup>11</sup>' : 'Powers 2<sup>11</sup>';
+  $('langBtn').textContent = lang === 'pl' ? 'EN' : 'PL';
+  $('rule').textContent = t.rule(base);
+  $('lBase').textContent = t.base; $('lSize').textContent = t.size; $('lMode').textContent = t.mode;
+  const opts = $('selMode').options;
+  opts[0].text = t.pow; opts[1].text = t.val; opts[2].text = t.both;
+  $('lScore').textContent = t.score; $('lMax').textContent = t.max; $('lBest').textContent = t.best;
+  $('undoBtn').textContent = t.undo; $('newBtn').textContent = t.newGame;
+  $('againBtn').textContent = t.again; $('overText').textContent = t.over;
+  $('lEq').textContent = t.lastEq; $('hint').textContent = t.hint;
+}
+function syncSelects() {
+  $('selBase').value = base; $('selSize').value = n; $('selMode').value = mode;
+}
+
+/* ---------- input ---------- */
+const KEYS = {ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+  a: 'left', d: 'right', w: 'up', s: 'down', A: 'left', D: 'right', W: 'up', S: 'down'};
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT') return;
+  const dir = KEYS[e.key];
+  if (dir) { e.preventDefault(); move(dir); }
+});
+let start = null;
+board.addEventListener('pointerdown', e => { start = {x: e.clientX, y: e.clientY}; });
+board.addEventListener('pointerup', e => {
+  if (!start) return;
+  const dx = e.clientX - start.x, dy = e.clientY - start.y;
+  start = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 25) return;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+});
+document.querySelectorAll('.pad button').forEach(b => b.addEventListener('click', () => move(b.dataset.dir)));
+
+$('selBase').addEventListener('change', e => {
+  base = +e.target.value; n = DEFAULT_SIZE[base];
+  syncSelects(); applyLang(); writeParams(); newGame(); e.target.blur();
+});
+$('selSize').addEventListener('change', e => { n = +e.target.value; writeParams(); newGame(); e.target.blur(); });
+$('selMode').addEventListener('change', e => { mode = e.target.value; writeParams(); render(); e.target.blur(); });
+$('langBtn').addEventListener('click', () => { lang = lang === 'pl' ? 'en' : 'pl'; applyLang(); writeParams(); render(); });
+$('newBtn').addEventListener('click', newGame);
+$('againBtn').addEventListener('click', newGame);
+$('undoBtn').addEventListener('click', undo);
+window.addEventListener('resize', () => render());
+
+/* ---------- start ---------- */
+readParams(); syncSelects(); applyLang(); newGame();
+</script>
+</body>
+</html>
