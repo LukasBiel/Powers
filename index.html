@@ -279,8 +279,8 @@ function tileHTML(e, cell) {
   const digits = String(valOf(e)).length;
   if (mode === 'pow') return {html: pw(base, e), fs: cell * 0.38};
   if (mode === 'val') return {html: v, fs: cell * Math.min(0.42, 1.1 / (digits + 0.6))};
-  const small = cell * Math.min(0.17, 0.95 / (digits + 1.5));
-  return {html: `<div>${pw(base, e)}</div><div class="val" style="font-size:${small}px">${v}</div>`, fs: cell * 0.3};
+  const big = cell * Math.min(0.36, 1.0 / (digits + 0.8));
+  return {html: `<div>${v}</div><div class="val" style="font-size:${cell * 0.2}px">${pw(base, e)}</div>`, fs: big};
 }
 function eqHTML(e) {
   const terms = Array(base).fill(pw(base, e)).join(' + ');
